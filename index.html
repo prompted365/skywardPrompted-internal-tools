@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Force Graph with SpriteText</title>
+
+  <!-- Load dependencies in proper order -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/three-spritetext"></script>
+  <script src="https://unpkg.com/3d-force-graph"></script>
+
+  <style>
+    body {
+      margin: 0; 
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+    }
+    #3d-graph {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div id="3d-graph"></div>
+  
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      if (typeof THREE === "undefined" || typeof SpriteText === "undefined" || typeof ForceGraph3D === "undefined") {
+        console.error("One or more dependencies failed to load.");
+        return;
+      }
+
+      const fundingClusters = {
+        "Health & Food Security": ["Blue Cross NC Foundation", "Robert Wood Johnson Foundation"],
+        "Interfaith & Cultural Bridge-Building": ["Doris Duke Charitable Foundation", "Lilly Endowment"],
+        "Interfaith Leadership & Religious Literacy": ["Arthur Vining Davis Foundations", "Henry Luce Foundation"],
+        "Systemic Change & Social Justice": ["Ford Foundation", "Open Society Foundations"],
+        "Education & Youth Development": ["Pillars Fund", "Wallace Foundation"],
+        "Refugee Resettlement & Humanitarian Aid": ["Islamic Relief USA", "American Muslim Community Foundation"],
+        "Social Services & Economic Empowerment": ["Bank of America Charitable Foundation", "Wells Fargo Foundation"],
+        "Capacity Building & General Operating Support": ["A.J. Fletcher Foundation", "Kenan Charitable Trust"]
+      };
+
+      const edgeWeights = {
+        "Health & Food Security": 1.5,
+        "Interfaith & Cultural Bridge-Building": 2,
+        "Interfaith Leadership & Religious Literacy": 2.5,
+        "Systemic Change & Social Justice": 3,
+        "Education & Youth Development": 2,
+        "Refugee Resettlement & Humanitarian Aid": 2.5,
+        "Social Services & Economic Empowerment": 3,
+        "Capacity Building & General Operating Support": 4
+      };
+
+      let nodes = [{ id: "IAR", group: "center", fx: 0, fy: 0, fz: 0 }];
+      let links = [];
+      let clusterIndex = 0;
+      
+      Object.entries(fundingClusters).forEach(([cluster, foundations]) => {
+        let angle = (clusterIndex / Object.keys(fundingClusters).length) * Math.PI * 2;
+        let x = Math.cos(angle) * 100;
+        let y = Math.sin(angle) * 100;
+        let z = clusterIndex * 10 - 40;
+        
+        nodes.push({ id: cluster, group: "core", fx: x, fy: y, fz: z });
+        links.push({ source: "IAR", target: cluster, value: 2 });
+        
+        foundations.forEach((foundation) => {
+          let fx = x + Math.random() * 40 - 20;
+          let fy = y + Math.random() * 40 - 20;
+          let fz = z + Math.random() * 10 - 5;
+          nodes.push({ id: foundation, group: "funder", fx, fy, fz });
+          links.push({ source: cluster, target: foundation, value: edgeWeights[cluster] });
+        });
+        clusterIndex++;
+      });
+
+      const Graph = ForceGraph3D()(document.getElementById("3d-graph"))
+        .graphData({ nodes, links })
+        .nodeAutoColorBy("group")
+        .linkWidth(link => link.value / 1.5)
+        .nodeThreeObject(node => {
+          const sprite = new SpriteText(node.id);
+          if (node.group === "center") {
+            sprite.color = "red";
+            sprite.textHeight = 10;
+          } else if (node.group === "core") {
+            sprite.color = "orange";
+            sprite.textHeight = 8;
+          } else {
+            sprite.color = "lightblue";
+            sprite.textHeight = 6;
+          }
+          return sprite;
+        })
+        .backgroundColor("#101010");
+
+      Graph.d3Force("charge").strength(-50);
+      window.addEventListener("resize", () => {
+        Graph.width(window.innerWidth)
+             .height(window.innerHeight);
+      });
+    });
+  </script>
+</body>
+</html>
